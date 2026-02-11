@@ -1,6 +1,6 @@
 // API Configuration
 module.exports = {
-  port: process.env.PORT || 5000,
+  port: process.env.PORT || 5001,
   apiKey: process.env.API_KEY,
 
   // CORS settings

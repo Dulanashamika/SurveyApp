@@ -1,14 +1,14 @@
 import * as React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {Appearance, useColorScheme} from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Appearance, useColorScheme } from 'react-native';
 import {
   Provider as PaperProvider,
   MD3LightTheme,
   MD3DarkTheme,
 } from 'react-native-paper';
-import {useEffect, useState} from 'react';
-import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import { useEffect, useState } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 // Auth Components (shared across all modules)
 
@@ -71,7 +71,7 @@ import BirdCitySearchPage from './src/bird-module/Search-page/search-citizen';
 import BirdPieChartModel from './src/bird-module/dashboard-page/pie-charts/diversity-indices';
 import BirdPieChartModel1 from './src/bird-module/dashboard-page/pie-charts/diversity-indices1';
 import BirdPieChartModel2 from './src/bird-module/dashboard-page/pie-charts/diversity-indices2';
-import BirdPieChartModel3 from './src/bird-module/dashboard-page/pie-charts/diversity indices3';
+import BirdPieChartModel3 from './src/bird-module/dashboard-page/pie-charts/diversity-indices3';
 
 // Citizen Module Components
 import CitizenStartPage from './src/citizen-module/start-pages/start-page';
@@ -93,14 +93,14 @@ import MangroveNew from './src/mangrove-module/survey-form-page/new';
 import MangroveDataTableComponent from './src/mangrove-module/data-table/MyDataTable';
 
 // Config
-import {GOOGLE_WEB_CLIENT_ID} from './src/config';
+import { GOOGLE_WEB_CLIENT_ID } from './src/config';
 
 // Database
-import {initDatabase} from './src/assets/sql_lite/db_connection';
-import {getDatabase as getUserDatabase} from './src/bird-module/database/db';
+import { initDatabase } from './src/assets/sql_lite/db_connection';
+import { getDatabase as getUserDatabase } from './src/bird-module/database/db';
 
 // Network utilities
-import {runNetworkDiagnostics} from './src/utils/networkUtils';
+import { runNetworkDiagnostics } from './src/utils/networkUtils';
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -138,7 +138,7 @@ const customAnimation = {
   cardStyleInterpolator: ({
     current,
   }: {
-    current: {progress: {interpolate: Function}};
+    current: { progress: { interpolate: Function } };
   }) => ({
     cardStyle: {
       opacity: current.progress.interpolate({
@@ -166,7 +166,7 @@ const App = () => {
 
   // Listen for theme changes
   useEffect(() => {
-    const listener = Appearance.addChangeListener(({colorScheme}) => {
+    const listener = Appearance.addChangeListener(({ colorScheme }) => {
       setTheme(colorScheme === 'dark' ? darkTheme : lightTheme);
     });
     return () => listener.remove();
@@ -178,7 +178,7 @@ const App = () => {
       try {
         await initDatabase();
         console.log('BluTally database initialized successfully');
-        
+
         // Initialize user_db database
         await getUserDatabase();
         console.log('User database initialized successfully');
@@ -199,7 +199,7 @@ const App = () => {
         console.error('[App] Error running diagnostics:', error);
       }
     };
-    
+
     // Run diagnostics after a short delay to allow app to settle
     const timer = setTimeout(runDiagnostics, 2000);
     return () => clearTimeout(timer);

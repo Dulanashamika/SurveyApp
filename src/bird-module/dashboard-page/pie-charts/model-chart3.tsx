@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import {Button, IconButton} from 'react-native-paper';
-import {useNavigation} from '@react-navigation/native';
-import {useRoute} from '@react-navigation/native';
+import { Button, IconButton } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 import PieChartModel from './diversity-indices';
 import Orientation from 'react-native-orientation-locker';
-import PieChartModel3 from './diversity indices3';
+import PieChartModel3 from './diversity-indices3';
 
 const theme = {
   colors: {
@@ -25,7 +25,7 @@ const theme = {
 
 //the chart which display after click
 
-const ModelChart3 = ({ setShowModelChart}) => {
+const ModelChart3 = ({ setShowModelChart }) => {
   const route = useRoute();
   // const { rowData } = route.params;
   const navigation = useNavigation();
@@ -55,7 +55,7 @@ const ModelChart3 = ({ setShowModelChart}) => {
           icon="keyboard-backspace"
           iconColor="black"
           size={30}
-          style={{marginRight: 20}}
+          style={{ marginRight: 20 }}
         />
       </TouchableOpacity>
       <ScrollView style={styles.title_container}>

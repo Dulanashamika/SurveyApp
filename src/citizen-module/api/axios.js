@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // For Android Emulator
-const API_BASE_URL = 'http://172.20.8.77:5000/api';
+const API_BASE_URL = 'http://172.20.8.43:5001/api';
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
