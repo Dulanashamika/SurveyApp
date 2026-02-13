@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,16 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import {TextInput} from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
-import {API_URL} from '../../config';
-import {setLoginEmail} from '../../assets/sql_lite/db_connection';
+import { API_URL } from '../../config';
+import { setLoginEmail } from '../../assets/sql_lite/db_connection';
 import ReactNativeBiometrics from 'react-native-biometrics';
-import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as Keychain from 'react-native-keychain';
 
-const SigninForm = ({navigation}: any) => {
+const SigninForm = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureTextEntry, setSecureTextEntry] = useState(true);
@@ -44,7 +44,7 @@ const SigninForm = ({navigation}: any) => {
   const checkBiometricAvailability = async () => {
     try {
       const rnBiometrics = new ReactNativeBiometrics();
-      const {available} = await rnBiometrics.isSensorAvailable();
+      const { available } = await rnBiometrics.isSensorAvailable();
       setFingerPrintAvailable(available);
     } catch (error) {
       console.error('Biometric check error:', error);
@@ -70,19 +70,23 @@ const SigninForm = ({navigation}: any) => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/login`, {email, password});
+      const response = await axios.post(`${API_URL}/login`, { email, password });
 
       if (response.data.status === 'ok') {
+        const { token } = response.data.data;
+        // Store email and token securely
+        await Keychain.setGenericPassword(email, token);
+
         setLoginEmail(email);
         Alert.alert('Success', 'Logged in successfully');
-        navigation.replace('Welcome', {email});
+        navigation.replace('Welcome', { email });
       } else if (response.data.status === 'google') {
         Alert.alert('Error', 'This account uses Google Sign-In. Please use the Google button.');
       } else if (response.data.status === 'notConfirmed') {
         handleSendVerificationCode();
       } else if (response.data.status === 'notApproved') {
         Alert.alert('Pending', 'Your account is awaiting admin approval.');
-        navigation.navigate('GetAdminApprove', {email});
+        navigation.navigate('GetAdminApprove', { email });
       } else {
         Alert.alert('Error', response.data.data || 'Login failed');
       }
@@ -96,10 +100,10 @@ const SigninForm = ({navigation}: any) => {
 
   const handleSendVerificationCode = async () => {
     try {
-      const response = await axios.post(`${API_URL}/send-confirmation-email`, {email});
-      const {confirmationCode} = response.data;
+      const response = await axios.post(`${API_URL}/send-confirmation-email`, { email });
+      const { confirmationCode } = response.data;
       Alert.alert('Email Not Verified', 'Please verify your email first.');
-      navigation.navigate('VerifyEmail', {email, confirmationCode});
+      navigation.navigate('VerifyEmail', { email, confirmationCode });
     } catch (err) {
       console.error('Failed to send confirmation email.');
     }
@@ -112,7 +116,7 @@ const SigninForm = ({navigation}: any) => {
       const userInfo = await GoogleSignin.signIn();
 
       if (userInfo && userInfo.data && userInfo.data.user) {
-        const {email: gEmail, name, photo} = userInfo.data.user;
+        const { email: gEmail, name, photo } = userInfo.data.user;
         handleGoogleSignUp(gEmail!, name!, photo || '');
       } else {
         Alert.alert('Error', 'Google Sign-In returned invalid data');
@@ -125,25 +129,27 @@ const SigninForm = ({navigation}: any) => {
     }
   };
 
-  const handleGoogleSignUp = (gEmail: string, name: string, photo: string) => {
-    axios
-      .post(`${API_URL}/google-register`, {email: gEmail, name, photo})
-      .then(res => {
-        if (res.data.status === 'ok') {
-          Alert.alert('Success', 'Account registered successfully');
-          navigation.navigate('PrivacyPolicy', {email: gEmail, name});
-        } else if (res.data.status === 'google') {
-          setLoginEmail(gEmail);
-          Alert.alert('Success', 'Logged in successfully');
-          navigation.replace('Welcome', {email: gEmail});
-        } else if (res.data.status === 'notgoogle') {
-          Alert.alert('Error', 'This email is registered with email/password. Please use that method.');
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        Alert.alert('Error', 'Failed to sign in with Google.');
-      });
+  const handleGoogleSignUp = async (gEmail: string, name: string, photo: string) => {
+    try {
+      const res = await axios.post(`${API_URL}/google-register`, { email: gEmail, name, photo });
+
+      if (res.data.status === 'ok') {
+        Alert.alert('Success', 'Account registered successfully');
+        navigation.navigate('PrivacyPolicy', { email: gEmail, name });
+      } else if (res.data.status === 'google') {
+        const { token } = res.data.data;
+        await Keychain.setGenericPassword(gEmail, token);
+
+        setLoginEmail(gEmail);
+        Alert.alert('Success', 'Logged in successfully');
+        navigation.replace('Welcome', { email: gEmail });
+      } else if (res.data.status === 'notgoogle') {
+        Alert.alert('Error', 'This email is registered with email/password. Please use that method.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google.');
+    }
   };
 
   const handleFingerprintLogin = async () => {
@@ -154,10 +160,10 @@ const SigninForm = ({navigation}: any) => {
 
     try {
       const rnBiometrics = new ReactNativeBiometrics();
-      const {available, biometryType} = await rnBiometrics.isSensorAvailable();
+      const { available, biometryType } = await rnBiometrics.isSensorAvailable();
 
       if (available && (biometryType === 'TouchID' || biometryType === 'Biometrics')) {
-        const {success} = await rnBiometrics.simplePrompt({
+        const { success } = await rnBiometrics.simplePrompt({
           promptMessage: 'Confirm fingerprint to sign in',
         });
 
@@ -165,7 +171,7 @@ const SigninForm = ({navigation}: any) => {
           const credentials = await Keychain.getGenericPassword();
           if (credentials) {
             setLoginEmail(credentials.username);
-            navigation.replace('Welcome', {email: credentials.username});
+            navigation.replace('Welcome', { email: credentials.username });
           }
         } else {
           Alert.alert('Failed', 'Authentication failed. Please try again.');
@@ -225,7 +231,7 @@ const SigninForm = ({navigation}: any) => {
               outlineColor="rgba(74, 120, 86, 0.3)"
               activeOutlineColor="#4A7856"
               style={styles.input}
-              theme={{colors: {primary: '#4A7856', background: 'rgba(255, 255, 255, 0.95)'}}}
+              theme={{ colors: { primary: '#4A7856', background: 'rgba(255, 255, 255, 0.95)' } }}
             />
           </View>
 
@@ -248,7 +254,7 @@ const SigninForm = ({navigation}: any) => {
                   color="#4A7856"
                 />
               }
-              theme={{colors: {primary: '#4A7856', background: 'rgba(255, 255, 255, 0.95)'}}}
+              theme={{ colors: { primary: '#4A7856', background: 'rgba(255, 255, 255, 0.95)' } }}
             />
           </View>
 
@@ -292,7 +298,7 @@ const SigninForm = ({navigation}: any) => {
               source={require('../../assets/image/google.png')}
               style={styles.googleIcon}
             />
-            <Text style={styles.googleButtonText}>Google</Text>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
           </TouchableOpacity>
 
           {(isFingerPrintAvailable || hasStoredCredentials) && (
@@ -341,7 +347,7 @@ const SigninForm = ({navigation}: any) => {
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {flex: 1, resizeMode: 'cover'},
+  backgroundImage: { flex: 1, resizeMode: 'cover' },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -357,29 +363,29 @@ const styles = StyleSheet.create({
     padding: 10,
     zIndex: 10,
   },
-  backButtonText: {fontSize: 14, color: '#FFFFFF', marginLeft: 5, fontWeight: '600'},
+  backButtonText: { fontSize: 14, color: '#FFFFFF', marginLeft: 5, fontWeight: '600' },
   formContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderRadius: 20,
     padding: 28,
     ...Platform.select({
-      ios: {shadowColor: 'black', shadowOffset: {width: 0, height: 5}, shadowOpacity: 0.35, shadowRadius: 10},
-      android: {elevation: 10},
+      ios: { shadowColor: 'black', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.35, shadowRadius: 10 },
+      android: { elevation: 10 },
     }),
   },
-  header: {marginBottom: 24},
-  title: {fontSize: 26, fontWeight: '700', color: '#4A7856', marginBottom: 10},
-  subtitle: {fontSize: 13, color: '#666', lineHeight: 19},
-  inputContainer: {marginBottom: 16},
-  label: {fontSize: 13, fontWeight: '600', color: '#333', marginBottom: 8},
-  input: {backgroundColor: 'rgba(255, 255, 255, 0.98)', fontSize: 13},
+  header: { marginBottom: 24 },
+  title: { fontSize: 26, fontWeight: '700', color: '#4A7856', marginBottom: 10 },
+  subtitle: { fontSize: 13, color: '#666', lineHeight: 19 },
+  inputContainer: { marginBottom: 16 },
+  label: { fontSize: 13, fontWeight: '600', color: '#333', marginBottom: 8 },
+  input: { backgroundColor: 'rgba(255, 255, 255, 0.98)', fontSize: 13 },
   optionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
-  rememberContainer: {flexDirection: 'row', alignItems: 'center'},
+  rememberContainer: { flexDirection: 'row', alignItems: 'center' },
   checkbox: {
     width: 18,
     height: 18,
@@ -390,9 +396,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkboxChecked: {backgroundColor: '#4A7856'},
-  rememberText: {fontSize: 11, color: '#333', fontWeight: '500'},
-  forgotText: {fontSize: 11, color: '#4A7856', fontWeight: '700'},
+  checkboxChecked: { backgroundColor: '#4A7856' },
+  rememberText: { fontSize: 11, color: '#333', fontWeight: '500' },
+  forgotText: { fontSize: 11, color: '#4A7856', fontWeight: '700' },
   loginButton: {
     backgroundColor: '#4A7856',
     paddingVertical: 13,
@@ -400,19 +406,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     ...Platform.select({
-      ios: {shadowColor: 'black', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.25, shadowRadius: 5},
-      android: {elevation: 6},
+      ios: { shadowColor: 'black', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5 },
+      android: { elevation: 6 },
     }),
   },
-  loginButtonDisabled: {opacity: 0.6},
-  loginButtonText: {fontSize: 15, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5},
+  loginButtonDisabled: { opacity: 0.6 },
+  loginButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  horizontalLine: {flex: 1, height: 1, backgroundColor: 'rgba(74, 120, 86, 0.2)'},
-  orText: {fontSize: 11, color: '#999', marginHorizontal: 10},
+  horizontalLine: { flex: 1, height: 1, backgroundColor: 'rgba(74, 120, 86, 0.2)' },
+  orText: { fontSize: 11, color: '#999', marginHorizontal: 10 },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -424,19 +430,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(74, 120, 86, 0.3)',
     marginBottom: 16,
   },
-  googleIcon: {width: 20, height: 20, marginRight: 8},
-  googleButtonText: {fontSize: 14, fontWeight: '600', color: '#333'},
+  googleIcon: { width: 20, height: 20, marginRight: 8 },
+  googleButtonText: { fontSize: 14, fontWeight: '600', color: '#333' },
   quickLoginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 30,
     marginBottom: 16,
   },
-  quickLoginButton: {alignItems: 'center', gap: 4},
-  quickLoginText: {fontSize: 11, color: '#4A7856', fontWeight: '500'},
-  signUpContainer: {flexDirection: 'row', justifyContent: 'center', alignItems: 'center'},
-  signUpText: {fontSize: 12, color: '#666'},
-  signUpLink: {fontSize: 12, color: '#4A7856', fontWeight: '700', textDecorationLine: 'underline'},
+  quickLoginButton: { alignItems: 'center', gap: 4 },
+  quickLoginText: { fontSize: 11, color: '#4A7856', fontWeight: '500' },
+  signUpContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  signUpText: { fontSize: 12, color: '#666' },
+  signUpLink: { fontSize: 12, color: '#4A7856', fontWeight: '700', textDecorationLine: 'underline' },
   nextButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -447,7 +453,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 8,
   },
-  nextButtonText: {fontSize: 14, fontWeight: '600', color: '#FFFFFF'},
+  nextButtonText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
 });
 
 export default SigninForm;

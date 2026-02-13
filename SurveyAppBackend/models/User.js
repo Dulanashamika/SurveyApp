@@ -81,6 +81,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  codeExpiresAt: {
+    type: Date,
+    default: null
+  },
   isApproved: {
     type: Boolean,
     default: false
@@ -110,7 +114,7 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

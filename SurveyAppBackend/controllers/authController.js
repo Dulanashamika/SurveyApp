@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
+const generateToken = require('../utils/generateToken');
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
@@ -14,6 +15,35 @@ const transporter = nodemailer.createTransport({
 // Generate random confirmation code
 const generateCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Send Welcome/Registration Email
+const sendWelcomeEmail = async (email, name) => {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Welcome to SurveyApp - Registration Successful',
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <h2 style="color: #4A7856;">Welcome to SurveyApp, ${name || 'Researcher'}!</h2>
+          <p>Thank you for registering with <strong>SurveyApp - Data for Blue Carbon Ecosystems</strong>.</p>
+          <p>Your account has been successfully created and is currently <strong>under review</strong> by our administrator team.</p>
+          <p>This is a standard quality control process to ensure the integrity of our environmental research data. You will receive another email once your account has been approved and you can start using all features of the app.</p>
+          <br/>
+          <p>Best regards,</p>
+          <p><strong>The SurveyApp Team</strong></p>
+          <hr style="border: none; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #777;">This is an automated message, please do not reply to this email.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Welcome email sent to ${email}`);
+  } catch (error) {
+    console.error(`Error sending welcome email to ${email}:`, error);
+  }
 };
 
 // Register user
@@ -47,7 +77,17 @@ exports.register = async (req, res) => {
 
     await user.save();
 
-    res.json({ status: 'ok', data: user, isAccount: false, isDelete: false });
+    res.json({
+      status: 'ok',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        token: generateToken(user._id),
+      },
+      isAccount: false,
+      isDelete: false
+    });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ status: 'error', message: error.message });
@@ -60,10 +100,11 @@ exports.sendConfirmationEmail = async (req, res) => {
     const { email } = req.body;
     const confirmationCode = generateCode();
 
-    // Update user with confirmation code
+    // Update user with confirmation code and expiration (30 minutes)
+    const expiresAt = new Date(Date.now() + 30 * 60000);
     await User.findOneAndUpdate(
       { email: email.toLowerCase() },
-      { confirmationCode },
+      { confirmationCode, codeExpiresAt: expiresAt },
       { upsert: true }
     );
 
@@ -75,7 +116,7 @@ exports.sendConfirmationEmail = async (req, res) => {
       html: `
         <h2>Email Confirmation</h2>
         <p>Your confirmation code is: <strong>${confirmationCode}</strong></p>
-        <p>This code will expire in 10 minutes.</p>
+        <p>This code will expire in 30 minutes.</p>
       `
     };
 
@@ -94,9 +135,10 @@ exports.sendPasswordResetEmail = async (req, res) => {
     const { email } = req.body;
     const resetCode = generateCode();
 
+    const expiresAt = new Date(Date.now() + 30 * 60000);
     await User.findOneAndUpdate(
       { email: email.toLowerCase() },
-      { confirmationCode: resetCode }
+      { confirmationCode: resetCode, codeExpiresAt: expiresAt }
     );
 
     const mailOptions = {
@@ -106,7 +148,7 @@ exports.sendPasswordResetEmail = async (req, res) => {
       html: `
         <h2>Password Reset</h2>
         <p>Your reset code is: <strong>${resetCode}</strong></p>
-        <p>This code will expire in 10 minutes.</p>
+        <p>This code will expire in 30 minutes.</p>
       `
     };
 
@@ -119,15 +161,63 @@ exports.sendPasswordResetEmail = async (req, res) => {
   }
 };
 
+// Verify password reset code
+exports.verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    if (user.confirmationCode !== code) {
+      return res.json({ status: 'error', message: 'Invalid verification code' });
+    }
+
+    if (user.codeExpiresAt && new Date() > user.codeExpiresAt) {
+      const newCode = generateCode();
+      const newExpiresAt = new Date(Date.now() + 30 * 60000);
+
+      user.confirmationCode = newCode;
+      user.codeExpiresAt = newExpiresAt;
+      await user.save();
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'SurveyApp - New Password Reset Code',
+        html: `
+          <h2>Password Reset Code Expired</h2>
+          <p>Your previous reset code expired. Here is your new code: <strong>${newCode}</strong></p>
+          <p>This code will expire in 30 minutes.</p>
+        `
+      };
+      await transporter.sendMail(mailOptions);
+
+      return res.json({
+        status: 'expired',
+        resetCode: newCode,
+        message: 'Password reset code expired. A new code has been sent to your email.'
+      });
+    }
+
+    res.json({ status: 'ok', message: 'Code verified' });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 // Send email verification code (without actual email)
 exports.sendEmail = async (req, res) => {
   try {
     const { email } = req.body;
     const code = generateCode();
 
+    const expiresAt = new Date(Date.now() + 30 * 60000);
     await User.findOneAndUpdate(
       { email: email.toLowerCase() },
-      { confirmationCode: code },
+      { confirmationCode: code, codeExpiresAt: expiresAt },
       { upsert: true }
     );
 
@@ -292,7 +382,17 @@ exports.login = async (req, res) => {
       return res.json({ status: 'notApproved', data: 'Account not approved by admin' });
     }
 
-    res.json({ status: 'ok', data: user });
+    res.json({
+      status: 'ok',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isGoogleLogin: user.isGoogleLogin,
+        token: generateToken(user._id),
+      }
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ status: 'error', message: error.message });
@@ -308,7 +408,15 @@ exports.googleRegister = async (req, res) => {
 
     if (user) {
       if (user.isGoogleLogin) {
-        return res.json({ status: 'google', data: user });
+        return res.json({
+          status: 'google',
+          data: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            token: generateToken(user._id),
+          }
+        });
       } else {
         return res.json({ status: 'notgoogle', data: 'Account registered with email/password' });
       }
@@ -324,7 +432,19 @@ exports.googleRegister = async (req, res) => {
     });
 
     await user.save();
-    res.json({ status: 'ok', data: user });
+
+    // Send Welcome Email for new Google user
+    sendWelcomeEmail(user.email, user.name);
+
+    res.json({
+      status: 'ok',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        token: generateToken(user._id),
+      }
+    });
   } catch (error) {
     console.error('Google register error:', error);
     res.status(500).json({ status: 'error', message: error.message });
@@ -334,17 +454,52 @@ exports.googleRegister = async (req, res) => {
 // Email validation (confirm email)
 exports.emailValidation = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, code } = req.body;
 
-    const user = await User.findOneAndUpdate(
-      { email: email.toLowerCase() },
-      { emailConfirmed: true, confirmationCode: null },
-      { new: true }
-    );
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
       return res.status(404).json({ status: 'error', message: 'User not found' });
     }
+
+    if (code && user.confirmationCode !== code) {
+      return res.json({ status: 'error', message: 'Invalid verification code' });
+    }
+
+    if (user.codeExpiresAt && new Date() > user.codeExpiresAt) {
+      const newCode = generateCode();
+      const newExpiresAt = new Date(Date.now() + 30 * 60000);
+
+      user.confirmationCode = newCode;
+      user.codeExpiresAt = newExpiresAt;
+      await user.save();
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'SurveyApp - New Verification Code',
+        html: `
+          <h2>Verification Code Expired</h2>
+          <p>Your previous code expired. Here is your new verification code: <strong>${newCode}</strong></p>
+          <p>This code will expire in 30 minutes.</p>
+        `
+      };
+      await transporter.sendMail(mailOptions);
+
+      return res.json({
+        status: 'expired',
+        confirmationCode: newCode,
+        message: 'Verification code expired. A new code has been sent to your email.'
+      });
+    }
+
+    user.emailConfirmed = true;
+    user.confirmationCode = null;
+    user.codeExpiresAt = null;
+    await user.save();
+
+    // Send Welcome Email after successful email verification
+    sendWelcomeEmail(user.email, user.name || user.firstName);
 
     res.json({ status: 'ok', data: user });
   } catch (error) {

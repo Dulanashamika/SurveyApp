@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,13 @@ import {
   TouchableOpacity,
   BackHandler,
 } from 'react-native';
-import {TextInput} from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
-import {API_URL} from '../../config';
+import { API_URL } from '../../config';
 
-const VerifyFPEmail = ({navigation, route}: any) => {
-  const [pins, setPins] = useState(['', '', '', '', '']);
+const VerifyFPEmail = ({ navigation, route }: any) => {
+  const [pins, setPins] = useState(['', '', '', '', '', '']);
   const [confirmCode, setConfirmCode] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(30);
   const [isResendEnabled, setIsResendEnabled] = useState(false);
@@ -23,6 +23,7 @@ const VerifyFPEmail = ({navigation, route}: any) => {
   const timerRef = useRef<any>(null);
 
   const pinRefs = [
+    useRef<any>(null),
     useRef<any>(null),
     useRef<any>(null),
     useRef<any>(null),
@@ -69,7 +70,7 @@ const VerifyFPEmail = ({navigation, route}: any) => {
     const newPins = [...pins];
     newPins[index] = text;
     setPins(newPins);
-    if (text.length === 1 && index < 4) {
+    if (text.length === 1 && index < 5) {
       pinRefs[index + 1].current?.focus();
     }
   };
@@ -82,18 +83,35 @@ const VerifyFPEmail = ({navigation, route}: any) => {
 
   const handleConfirmEmail = () => {
     const enteredCode = pins.join('');
-    if (enteredCode.length < 5) {
+    if (enteredCode.length < 6) {
       Alert.alert('Error', 'Please enter the complete verification code');
       return;
     }
-    if (enteredCode === confirmCode) {
-      Alert.alert('Success', 'Email verified successfully');
-      navigation.navigate('ResetPassword', {email});
-    } else {
-      Alert.alert('Error', 'Invalid verification code');
-      setPins(['', '', '', '', '']);
-      pinRefs[0].current?.focus();
-    }
+
+    axios
+      .post(`${API_URL}/verify-reset-code`, { email, code: enteredCode })
+      .then(res => {
+        const { status, message, resetCode: newCode } = res.data;
+
+        if (status === 'ok') {
+          Alert.alert('Success', 'Email verified successfully');
+          navigation.navigate('ResetPassword', { email });
+        } else if (status === 'expired') {
+          setConfirmCode(newCode); // Update local code
+          setPins(['', '', '', '', '', '']);
+          Alert.alert('Code Expired', message);
+          startCountdown(); // Restart timer
+          pinRefs[0].current?.focus();
+        } else {
+          Alert.alert('Error', message || 'Invalid verification code');
+          setPins(['', '', '', '', '', '']);
+          pinRefs[0].current?.focus();
+        }
+      })
+      .catch(error => {
+        console.error('Error during code verification:', error);
+        Alert.alert('Error', 'Failed to verify code. Please try again.');
+      });
   };
 
   const sendEmailAgain = async () => {
@@ -103,9 +121,9 @@ const VerifyFPEmail = ({navigation, route}: any) => {
     }
     try {
       startCountdown();
-      setPins(['', '', '', '', '']);
-      const response = await axios.post(`${API_URL}/send-password-reset-email`, {email});
-      const {resetCode} = response.data;
+      setPins(['', '', '', '', '', '']);
+      const response = await axios.post(`${API_URL}/send-password-reset-email`, { email });
+      const { resetCode } = response.data;
       setConfirmCode(resetCode);
       setResendAttempts(prev => prev + 1);
     } catch (err) {
@@ -153,7 +171,7 @@ const VerifyFPEmail = ({navigation, route}: any) => {
                 mode="outlined"
                 outlineColor="rgba(74, 120, 86, 0.3)"
                 activeOutlineColor="#4A7856"
-                theme={{colors: {primary: '#4A7856', background: '#fff'}}}
+                theme={{ colors: { primary: '#4A7856', background: '#fff' } }}
               />
             ))}
           </View>
@@ -172,13 +190,13 @@ const VerifyFPEmail = ({navigation, route}: any) => {
             <Text
               style={[
                 styles.resendText,
-                {color: isResendEnabled && resendAttempts < 2 ? '#4A7856' : '#999'},
+                { color: isResendEnabled && resendAttempts < 2 ? '#4A7856' : '#999' },
               ]}>
               {resendAttempts >= 2
                 ? 'Try again later'
                 : isResendEnabled
-                ? 'Re-send code?'
-                : `Re-send available in ${countdown}s`}
+                  ? 'Re-send code?'
+                  : `Re-send available in ${countdown}s`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -188,8 +206,8 @@ const VerifyFPEmail = ({navigation, route}: any) => {
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {flex: 1, resizeMode: 'cover'},
-  overlay: {flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', justifyContent: 'center', paddingHorizontal: 20},
+  backgroundImage: { flex: 1, resizeMode: 'cover' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', justifyContent: 'center', paddingHorizontal: 20 },
   backButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 40,
@@ -199,18 +217,18 @@ const styles = StyleSheet.create({
     padding: 10,
     zIndex: 10,
   },
-  backButtonText: {fontSize: 14, color: '#FFFFFF', marginLeft: 5, fontWeight: '600'},
+  backButtonText: { fontSize: 14, color: '#FFFFFF', marginLeft: 5, fontWeight: '600' },
   card: {
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
     ...Platform.select({
-      ios: {shadowColor: 'black', shadowOffset: {width: 0, height: 5}, shadowOpacity: 0.35, shadowRadius: 10},
-      android: {elevation: 10},
+      ios: { shadowColor: 'black', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.35, shadowRadius: 10 },
+      android: { elevation: 10 },
     }),
   },
-  iconContainer: {marginBottom: 15},
+  iconContainer: { marginBottom: 15 },
   emailCircle: {
     width: 70,
     height: 70,
@@ -219,9 +237,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {fontSize: 24, fontWeight: '700', color: '#4A7856', marginBottom: 10, textAlign: 'center'},
-  subtitle: {fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 20, marginBottom: 25},
-  emailHighlight: {fontWeight: '700', color: '#4A7856'},
+  title: { fontSize: 24, fontWeight: '700', color: '#4A7856', marginBottom: 10, textAlign: 'center' },
+  subtitle: { fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 20, marginBottom: 25 },
+  emailHighlight: { fontWeight: '700', color: '#4A7856' },
   pinContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -229,10 +247,10 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   pinInput: {
-    width: 50,
-    height: 55,
+    width: 42,
+    height: 50,
     textAlign: 'center',
-    fontSize: 22,
+    fontSize: 18,
     backgroundColor: '#fff',
   },
   confirmButton: {
@@ -243,12 +261,12 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 15,
     ...Platform.select({
-      ios: {shadowColor: 'black', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.25, shadowRadius: 5},
-      android: {elevation: 6},
+      ios: { shadowColor: 'black', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5 },
+      android: { elevation: 6 },
     }),
   },
-  confirmButtonText: {fontSize: 15, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5},
-  resendText: {fontSize: 13, fontWeight: '600', textDecorationLine: 'underline'},
+  confirmButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
+  resendText: { fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
 });
 
 export default VerifyFPEmail;

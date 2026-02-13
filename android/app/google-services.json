@@ -12,7 +12,16 @@
           "package_name": "com.mangrove"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "YOUR_ANDROID_CLIENT_ID_HERE",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mangrove",
+            "certificate_hash": "YOUR_SHA1_FINGERPRINT_HERE"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDXSKpPJ4kqUK1jAAy_b-X3s-s0khXpvPk"
@@ -20,7 +29,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "532310046514-217fr842olbptie78ubtgi4mkq84ljo8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

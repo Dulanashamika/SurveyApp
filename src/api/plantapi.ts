@@ -1,13 +1,4 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-
-const apiClient = axios.create({
-  baseURL: `${API_URL}/api`,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import apiClient from './client';
 
 export const plantApi = {
   createPlant: async (plantData: {

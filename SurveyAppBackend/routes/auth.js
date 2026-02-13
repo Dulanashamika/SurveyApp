@@ -17,6 +17,9 @@ router.post('/send-confirmation-email', authController.sendConfirmationEmail);
 // Send password reset email
 router.post('/send-password-reset-email', authController.sendPasswordResetEmail);
 
+// Verify password reset code
+router.post('/verify-reset-code', authController.verifyResetCode);
+
 // Send email verification
 router.post('/send-email', authController.sendEmail);
 

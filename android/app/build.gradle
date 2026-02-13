@@ -27,9 +27,27 @@ android {
         versionName "2.0"
     }
 
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     buildTypes {
         debug {
-            // Uses default debug signing
+            signingConfig signingConfigs.debug
         }
         release {
             minifyEnabled enableProguardInReleaseBuilds
@@ -40,22 +58,16 @@ android {
 
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
-    implementation 'com.facebook.react:react-native:+'
-
-    // Exclude Flipper integration if not used
-    implementation('com.facebook.react:react-native:+') {
-        exclude group: 'com.facebook.flipper'
-    }
+    implementation("com.facebook.react:react-native")
 
     implementation 'com.facebook.soloader:soloader:0.10.1'
-    implementation project(':react-native-vector-icons')
-    implementation 'com.google.android.gms:play-services-location:20.0.0'
-    implementation 'com.google.android.gms:play-services-auth:20.3.0'
+    // implementation project(':react-native-vector-icons') // Handle by autolinking
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
+    implementation 'com.google.android.gms:play-services-maps:18.2.0'
     implementation 'androidx.biometric:biometric:1.1.0'
-    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.google.android.material:material:1.9.0'
 
-
-    // Hermes or JSC
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
@@ -63,13 +75,7 @@ dependencies {
     }
 }
 
-// Fix for vector icons and fonts.gradle dependency
-//tasks.named('generateDebugLintReportModel').configure {
-//    dependsOn tasks.named('copyReactNativeVectorIconFonts')
-//}
-
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
 applyNativeModulesAppBuildGradle(project)
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
-// Uncomment the line below if Firebase or other Google services are needed
-// apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.gms.google-services'

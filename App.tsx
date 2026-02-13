@@ -9,6 +9,8 @@ import {
 } from 'react-native-paper';
 import { useEffect, useState } from 'react';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import * as Keychain from 'react-native-keychain';
+import { navigationRef } from './src/utils/navigationRef';
 
 // Auth Components (shared across all modules)
 
@@ -207,7 +209,21 @@ const App = () => {
 
   // Set the initial route
   useEffect(() => {
-    setInitialRoute('CitizenStartPage');
+    const checkLogin = async () => {
+      try {
+        const credentials = await Keychain.getGenericPassword();
+        if (credentials) {
+          // If token exists, go to Welcome (ModuleSelector) or dashboard
+          // But currently we don't have a simple dashboard, Welcome is ModuleSelector
+          setInitialRoute('Welcome');
+        } else {
+          setInitialRoute('CitizenStartPage');
+        }
+      } catch (error) {
+        setInitialRoute('CitizenStartPage');
+      }
+    };
+    checkLogin();
   }, []);
 
   // Return null or a loader until the initial route is determined
@@ -217,7 +233,7 @@ const App = () => {
 
   return (
     <PaperProvider theme={theme}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator
           initialRouteName={initialRoute}
           screenOptions={{

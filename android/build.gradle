@@ -15,39 +15,12 @@ buildscript {
         classpath "com.facebook.react:react-native-gradle-plugin:8.2"
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath 'com.android.tools.build:gradle:8.3.0'
-        // classpath 'com.google.gms:google-services:4.3.15'
+        classpath 'com.google.gms:google-services:4.3.15'
 
     }
 }
 
 
-apply plugin: "com.android.application"
-apply plugin: "com.facebook.react"
 
-android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
-    namespace "com.mangrove" // Add this line
+apply plugin: "com.facebook.react.rootproject"
 
-    defaultConfig {
-        applicationId "com.mangrove"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "2.0"
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-}
-
-dependencies {
-    implementation("com.facebook.react:react-android")
-    implementation(project(":react-native-vector-icons"))
-}
-
-
-apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")

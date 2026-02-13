@@ -7,9 +7,18 @@ $JavaHome = "C:\Program Files\Android\Android Studio\jbr"
 $AndroidHome = "$env:LOCALAPPDATA\Android\Sdk"
 
 # Set Process Environment Variables (temporary for this session)
+# Set Process Environment Variables (temporary for this session)
 $env:JAVA_HOME = $JavaHome
 $env:ANDROID_HOME = $AndroidHome
 $env:Path = "$JavaHome\bin;$AndroidHome\platform-tools;$AndroidHome\emulator;$AndroidHome\tools;$AndroidHome\tools\bin;$env:Path"
+
+# Override temporary and cache paths to use D: drive (Requires D:\Temp and D:\.gradle to exist/be writable)
+# This assumes the user has set up the directories or they will be created.
+$env:GRADLE_USER_HOME = "D:\.gradle"
+$env:ANDROID_AVD_HOME = "D:\Android_User_Home\.android\avd"
+$env:ANDROID_USER_HOME = "D:\Android_User_Home"
+$env:TMP = "D:\Temp"
+$env:TEMP = "D:\Temp"
 
 # Check if paths exist
 if (-not (Test-Path $JavaHome)) { Write-Error "Java Home not found at $JavaHome"; exit 1 }

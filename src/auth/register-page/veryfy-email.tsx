@@ -21,6 +21,7 @@ const VerifyEmail = ({ navigation, route }: any) => {
   const [pin3, setPin3] = useState('');
   const [pin4, setPin4] = useState('');
   const [pin5, setPin5] = useState('');
+  const [pin6, setPin6] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmCode, setConfirmCode] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(30);
@@ -33,6 +34,7 @@ const VerifyEmail = ({ navigation, route }: any) => {
   const pin3Ref = useRef<any>(null);
   const pin4Ref = useRef<any>(null);
   const pin5Ref = useRef<any>(null);
+  const pin6Ref = useRef<any>(null);
 
   const db = SQLite.openDatabase(
     { name: 'user_db.db', location: 'default' },
@@ -78,7 +80,7 @@ const VerifyEmail = ({ navigation, route }: any) => {
   };
 
   const cleanFilled = () => {
-    setPin1(''); setPin2(''); setPin3(''); setPin4(''); setPin5('');
+    setPin1(''); setPin2(''); setPin3(''); setPin4(''); setPin5(''); setPin6('');
   };
 
   const updateEmailVerificationInSQLite = () => {
@@ -97,32 +99,35 @@ const VerifyEmail = ({ navigation, route }: any) => {
   };
 
   const handleConfirmEmail = () => {
-    if (!pin1 || !pin2 || !pin3 || !pin4 || !pin5) {
+    if (!pin1 || !pin2 || !pin3 || !pin4 || !pin5 || !pin6) {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
     setLoading(true);
-    const enteredPin = `${pin1}${pin2}${pin3}${pin4}${pin5}`;
+    const enteredPin = `${pin1}${pin2}${pin3}${pin4}${pin5}${pin6}`;
 
-    if (enteredPin === confirmCode) {
-      setLoading(false);
-      axios
-        .post(`${API_URL}/email-validation`, { email })
-        .then(res => {
-          if (res.data.status === 'ok') {
-            updateEmailVerificationInSQLite();
-          } else {
-            Alert.alert('Error', 'Email verification failed');
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          Alert.alert('Error', 'Error verifying email. Please try again.');
-        });
-    } else {
-      setLoading(false);
-      Alert.alert('Error', 'Invalid verification code');
-    }
+    axios
+      .post(`${API_URL}/email-validation`, { email, code: enteredPin })
+      .then(res => {
+        setLoading(false);
+        const { status, message, confirmationCode: newCode } = res.data;
+
+        if (status === 'ok') {
+          updateEmailVerificationInSQLite();
+        } else if (status === 'expired') {
+          setConfirmCode(newCode); // Update local code with the new one from server
+          cleanFilled();
+          Alert.alert('Code Expired', message);
+          startCountdown(); // Restart timer for the new code
+        } else {
+          Alert.alert('Error', message || 'Invalid verification code');
+        }
+      })
+      .catch(error => {
+        setLoading(false);
+        console.error('Error:', error);
+        Alert.alert('Error', 'Error verifying email. Please try again.');
+      });
   };
 
   const sendEmailAgain = async () => {
@@ -199,7 +204,8 @@ const VerifyEmail = ({ navigation, route }: any) => {
               {renderPinInput(pin2, setPin2, pin2Ref, pin3Ref, pin1Ref)}
               {renderPinInput(pin3, setPin3, pin3Ref, pin4Ref, pin2Ref)}
               {renderPinInput(pin4, setPin4, pin4Ref, pin5Ref, pin3Ref)}
-              {renderPinInput(pin5, setPin5, pin5Ref, null, pin4Ref)}
+              {renderPinInput(pin5, setPin5, pin5Ref, pin6Ref, pin4Ref)}
+              {renderPinInput(pin6, setPin6, pin6Ref, null, pin5Ref)}
             </View>
 
             <TouchableOpacity
@@ -224,8 +230,8 @@ const VerifyEmail = ({ navigation, route }: any) => {
                 {resendAttempts >= 2
                   ? 'Try again later'
                   : isResendEnabled
-                  ? 'Re-send code?'
-                  : `Re-send available in ${countdown}s`}
+                    ? 'Re-send code?'
+                    : `Re-send available in ${countdown}s`}
               </Text>
             </TouchableOpacity>
           </View>
@@ -260,7 +266,7 @@ const styles = StyleSheet.create({
     marginBottom: 25, gap: 8,
   },
   pinInput: {
-    flex: 1, fontSize: 24, textAlign: 'center', backgroundColor: '#fff', height: 50,
+    flex: 1, fontSize: 18, textAlign: 'center', backgroundColor: '#fff', height: 45,
   },
   confirmButton: {
     backgroundColor: '#4A7856', paddingVertical: 13, borderRadius: 25,

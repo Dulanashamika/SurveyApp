@@ -9,6 +9,8 @@ import {
   BackHandler,
   ScrollView,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,6 +18,9 @@ import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
 import { API_URL } from '../../config';
 import SQLite from 'react-native-sqlite-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import * as Keychain from 'react-native-keychain';
+import { setLoginEmail } from '../../assets/sql_lite/db_connection';
 
 const SignupForm = () => {
   const navigation = useNavigation<any>();
@@ -118,9 +123,19 @@ const SignupForm = () => {
           researchAreas,
           periodicalCategories,
         });
+
+        // Send confirmation email after saving details
+        const emailRes = await axios.post(`${API_URL}/send-confirmation-email`, { email });
+
         setLoading(false);
-        Alert.alert('Success', 'Registration successful!');
-        navigation.navigate('SignupSuccess');
+        if (emailRes.data.status === 'ok') {
+          const { confirmationCode } = emailRes.data;
+          Alert.alert('Success', 'Registration successful! Verification code sent to your email.');
+          navigation.navigate('VerifyEmail', { email, confirmationCode });
+        } else {
+          Alert.alert('Success', 'Registration successful!');
+          navigation.navigate('SignupSuccess', { email });
+        }
       } else {
         Alert.alert('Error', response.data.data || 'Registration failed');
         setLoading(false);
@@ -128,6 +143,50 @@ const SignupForm = () => {
     } catch (error) {
       console.error('Signup error:', error);
       Alert.alert('Error', 'Registration failed. Please try again.');
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    try {
+      await GoogleSignin.signOut();
+      const userInfo = await GoogleSignin.signIn();
+
+      if (userInfo && userInfo.data && userInfo.data.user) {
+        const { email: gEmail, name, photo } = userInfo.data.user;
+
+        // Register/Login with Google on Backend
+        const res = await axios.post(`${API_URL}/google-register`, { email: gEmail, name, photo });
+
+        if (res.data.status === 'ok') {
+          // New registration - save extra details
+          saveUserToSQLite(gEmail!, 'google-auth', name || '');
+          await axios.post(`${API_URL}/save-signup-details`, {
+            email: gEmail,
+            role: selectedRole,
+            surveyTypes,
+            researchAreas,
+            periodicalCategories,
+          });
+
+          Alert.alert('Success', 'Account registered successfully');
+          navigation.navigate('PrivacyPolicy', { email: gEmail, name });
+        } else if (res.data.status === 'google') {
+          // Existing Google User
+          const { token } = res.data.data;
+          await Keychain.setGenericPassword(gEmail!, token);
+          await setLoginEmail(gEmail!);
+
+          Alert.alert('Success', 'Logged in successfully');
+          navigation.replace('Welcome', { email: gEmail });
+        } else if (res.data.status === 'notgoogle') {
+          Alert.alert('Error', 'This email is already registered with a password. Please sign in with email/password.');
+        }
+      }
+    } catch (error) {
+      console.error('Google Sign-In failed', error);
+      Alert.alert('Error', 'Google Sign-In failed.');
+    } finally {
       setLoading(false);
     }
   };
@@ -269,6 +328,25 @@ const SignupForm = () => {
               </Text>
             </TouchableOpacity>
 
+            <View style={styles.orContainer}>
+              <View style={styles.horizontalLine} />
+              <Text style={styles.orText}>or</Text>
+              <View style={styles.horizontalLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleSignup}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={require('../../assets/image/google.png')}
+                style={styles.googleIcon}
+              />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+
             <View style={styles.signInContainer}>
               <Text style={styles.signInText}>Already have an account? </Text>
               <TouchableOpacity
@@ -341,6 +419,42 @@ const styles = StyleSheet.create({
   signInContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   signInText: { fontSize: 12, color: '#666' },
   signInLink: { fontSize: 12, color: '#4A7856', fontWeight: '700', textDecorationLine: 'underline' },
+  orContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  horizontalLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(74, 120, 86, 0.2)',
+  },
+  orText: {
+    fontSize: 12,
+    color: '#999',
+    marginHorizontal: 10,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 120, 86, 0.3)',
+    marginBottom: 20,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
 });
 
 export default SignupForm;

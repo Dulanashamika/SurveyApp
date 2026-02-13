@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,12 @@ import {
   Icon,
 } from 'react-native-paper';
 
-import {useNavigation} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import {API_URL} from '../../config';
-import {setLoginEmail} from '../../assets/sql_lite/db_connection';
+import { API_URL } from '../../config';
+import { setLoginEmail } from '../../assets/sql_lite/db_connection';
 import ReactNativeBiometrics from 'react-native-biometrics';
-import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const GOOGLE_WEB_CLIENT_ID: string =
   '532310046514-217fr842olbptie78ubtgi4mkq84ljo8.apps.googleusercontent.com';
@@ -30,7 +30,7 @@ GoogleSignin.configure({
   scopes: ['profile', 'email'],
 });
 
-const LoginPage = ({route}: any) => {
+const LoginPage = ({ route }: any) => {
   const [theme, setTheme] = useState(Appearance.getColorScheme());
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
@@ -57,7 +57,7 @@ const LoginPage = ({route}: any) => {
 
       // Access user data from the response
       if (userInfo && userInfo.data && userInfo.data.user) {
-        const {email, name, photo} = userInfo.data.user;
+        const { email, name, photo } = userInfo.data.user;
         console.log('Google Login:', email, name);
         handleSignUp(email, name, photo);
       } else {
@@ -86,12 +86,12 @@ const LoginPage = ({route}: any) => {
         if (res.data.status === 'ok') {
           console.log('A');
           Alert.alert('Success', 'Registered in successfully');
-          navigation.navigate('PrivacyPolicy', {email, name});
+          navigation.navigate('PrivacyPolicy', { email, name });
         } else if (res.data.status === 'google') {
           console.log('D');
           setLoginEmail(email);
           Alert.alert('Success', 'Logged in successfully');
-          navigation.navigate('Welcome', {email});
+          navigation.navigate('Welcome', { email });
         } else if (res.data.status === 'notgoogle') {
           console.log('E');
           Alert.alert('Success', 'User Registered method Error');
@@ -127,7 +127,7 @@ const LoginPage = ({route}: any) => {
         if (res.data.status === 'ok') {
           setLoginEmail(email);
           Alert.alert('Success', 'Logged in successfully');
-          navigation.navigate('Welcome', {email});
+          navigation.navigate('Welcome', { email });
         } else if (res.data.status === 'google') {
           Alert.alert('Error', 'The registration method is invalid');
         } else if (res.data.status === 'notConfirmed') {
@@ -158,7 +158,7 @@ const LoginPage = ({route}: any) => {
     }
     console.log('email is: ', email);
 
-    navigation.navigate('GetAdminApprove', {email});
+    navigation.navigate('GetAdminApprove', { email });
   };
 
   // Get the email from route parameters
@@ -171,11 +171,11 @@ const LoginPage = ({route}: any) => {
         `${API_URL}/send-confirmation-email`,
         userData,
       );
-      const {confirmationCode} = response.data;
+      const { confirmationCode } = response.data;
       console.log('confirmationCode', confirmationCode);
 
       // Navigate to the ConfirmEmail screen and pass the code
-      navigation.navigate('VerifyEmail', {email, confirmationCode});
+      navigation.navigate('VerifyEmail', { email, confirmationCode });
     } catch (err) {
       console.error('Failed to send confirmation email.');
     }
@@ -228,16 +228,16 @@ const LoginPage = ({route}: any) => {
 
     const checkBiometrics = async () => {
       try {
-        const {available, biometryType} =
+        const { available, biometryType } =
           await rnBiometrics.isSensorAvailable();
         if (available) {
           if (biometryType === 'TouchID' || biometryType === 'Biometrics') {
-            const {success} = await rnBiometrics.simplePrompt({
+            const { success } = await rnBiometrics.simplePrompt({
               promptMessage: 'Confirm fingerprint',
             });
 
             if (success) {
-              navigation.navigate('Welcome', {email});
+              navigation.navigate('Welcome', { email });
             } else {
               Alert.alert('Authentication failed', 'Please try again.');
             }
@@ -263,7 +263,7 @@ const LoginPage = ({route}: any) => {
   };
 
   useEffect(() => {
-    const subscription = Appearance.addChangeListener(({colorScheme}) => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
       setTheme(colorScheme);
     });
     return () => subscription.remove();
@@ -286,11 +286,11 @@ const LoginPage = ({route}: any) => {
             },
           ]}>
           <Text
-            style={[styles.main_text, {color: isDarkMode ? 'white' : 'black'}]}>
+            style={[styles.main_text, { color: isDarkMode ? 'white' : 'black' }]}>
             Login
           </Text>
           <Text
-            style={[styles.sub_text, {color: isDarkMode ? 'white' : 'black'}]}>
+            style={[styles.sub_text, { color: isDarkMode ? 'white' : 'black' }]}>
             Enter your email and password to login to this app
           </Text>
 
@@ -328,7 +328,7 @@ const LoginPage = ({route}: any) => {
             <Text
               style={[
                 styles.forgotPasswordText,
-                {color: isDarkMode ? 'white' : 'black'},
+                { color: isDarkMode ? 'white' : 'black' },
               ]}>
               Forgot Password?
             </Text>
@@ -338,7 +338,7 @@ const LoginPage = ({route}: any) => {
             mode="contained"
             onPress={handleLogin}
             loading={loading}
-            style={[styles.button_signup, {borderRadius: 8}]}
+            style={[styles.button_signup, { borderRadius: 8 }]}
             buttonColor="#516E9E"
             textColor="white"
             labelStyle={styles.button_label}>
@@ -348,7 +348,7 @@ const LoginPage = ({route}: any) => {
           <Button
             mode="contained"
             onPress={handleLoginCitizen}
-            style={[styles.button_signup, {borderRadius: 8}]}
+            style={[styles.button_signup, { borderRadius: 8 }]}
             buttonColor="#516E9E"
             textColor="white"
             labelStyle={styles.button_label}>
@@ -360,7 +360,7 @@ const LoginPage = ({route}: any) => {
             <Text
               style={[
                 styles.sub_text_D,
-                {color: isDarkMode ? 'white' : 'black'},
+                { color: isDarkMode ? 'white' : 'black' },
               ]}>
               or continue with
             </Text>
@@ -371,7 +371,7 @@ const LoginPage = ({route}: any) => {
             mode="contained"
             onPress={handleGoogleLogin}
             loading={loading}
-            style={[styles.button_google, {borderRadius: 8}]}
+            style={[styles.button_google, { borderRadius: 8 }]}
             buttonColor="white"
             textColor="black"
             labelStyle={styles.button_label}>
@@ -380,7 +380,7 @@ const LoginPage = ({route}: any) => {
                 source={require('../../assets/image/google.png')}
                 style={styles.googleIcon}
               />
-              <Text style={styles.googleButtonText}>Google</Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </View>
           </Button>
 
@@ -401,7 +401,7 @@ const LoginPage = ({route}: any) => {
             <Text
               style={[
                 styles.sub_text_A,
-                {color: isDarkMode ? 'white' : 'black'},
+                { color: isDarkMode ? 'white' : 'black' },
               ]}>
               If you don't have any account?
             </Text>
@@ -409,11 +409,11 @@ const LoginPage = ({route}: any) => {
             <Button
               mode="text"
               onPress={() => handleSignupPress()}
-              theme={{colors: {primary: 'green'}}}>
+              theme={{ colors: { primary: 'green' } }}>
               <Text
                 style={[
                   styles.sub_text_B,
-                  {color: isDarkMode ? 'white' : 'black'},
+                  { color: isDarkMode ? 'white' : 'black' },
                 ]}>
                 Signup
               </Text>

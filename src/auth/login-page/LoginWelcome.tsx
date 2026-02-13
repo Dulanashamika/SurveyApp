@@ -8,12 +8,20 @@ import {
   Image,
   Platform,
   BackHandler,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import axios from 'axios';
+import { API_URL } from '../../config';
+import { setLoginEmail } from '../../assets/sql_lite/db_connection';
+import * as Keychain from 'react-native-keychain';
 
 const LoginWelcome = () => {
   const navigation = useNavigation<any>();
+  const [loading, setLoading] = React.useState(false);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -31,6 +39,49 @@ const LoginWelcome = () => {
 
   const handleSignUp = () => {
     navigation.navigate('SignupRoleSelection');
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await GoogleSignin.signOut();
+      const userInfo = await GoogleSignin.signIn();
+
+      if (userInfo && userInfo.data && userInfo.data.user) {
+        const { email, name, photo } = userInfo.data.user;
+        handleGoogleSignUp(email!, name!, photo || '');
+      } else {
+        Alert.alert('Error', 'Google Sign-In returned invalid data');
+      }
+    } catch (error) {
+      console.error('Google Sign-In failed', error);
+      Alert.alert('Error', 'Google Sign-In failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async (gEmail: string, name: string, photo: string) => {
+    try {
+      const res = await axios.post(`${API_URL}/google-register`, { email: gEmail, name, photo });
+
+      if (res.data.status === 'ok') {
+        Alert.alert('Success', 'Account registered successfully');
+        navigation.navigate('PrivacyPolicy', { email: gEmail, name });
+      } else if (res.data.status === 'google') {
+        const { token } = res.data.data;
+        await Keychain.setGenericPassword(gEmail, token);
+
+        await setLoginEmail(gEmail);
+        Alert.alert('Success', 'Logged in successfully');
+        navigation.replace('Welcome', { email: gEmail });
+      } else if (res.data.status === 'notgoogle') {
+        Alert.alert('Error', 'This email is registered with email/password. Please use that method.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google.');
+    }
   };
 
   return (
@@ -73,6 +124,31 @@ const LoginWelcome = () => {
             <Text style={styles.signUpButtonText}>Sign up</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={styles.orContainer}>
+          <View style={styles.horizontalLine} />
+          <Text style={styles.orText}>or</Text>
+          <View style={styles.horizontalLine} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.googleButton, loading && styles.googleButtonDisabled]}
+          onPress={handleGoogleLogin}
+          activeOpacity={0.8}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#333" />
+          ) : (
+            <>
+              <Image
+                source={require('../../assets/image/google.png')}
+                style={styles.googleIcon}
+              />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     </ImageBackground>
   );
@@ -188,6 +264,57 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4A7856',
     letterSpacing: 0.6,
+  },
+  orContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    paddingHorizontal: 30,
+  },
+  horizontalLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  orText: {
+    color: '#FFFFFF',
+    marginHorizontal: 15,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 25,
+    marginHorizontal: 10,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  googleButtonDisabled: {
+    opacity: 0.7,
+  },
+  googleIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#444444',
   },
 });
 
